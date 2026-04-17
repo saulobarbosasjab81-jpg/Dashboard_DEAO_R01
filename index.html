@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -112,7 +112,7 @@
   /* ─── KPI GRID ─── */
   .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 9px;
     margin-bottom: 14px;
   }
@@ -136,6 +136,8 @@
   .kpi-card.execucao::before  { background: #378ADD; }
   .kpi-card.revisando::before { background: #D4892A; }
   .kpi-card.finalizado::before{ background: #3A7D44; }
+  .kpi-card.paralisado::before { background: #CC6622; }
+  .kpi-card.cancelado::before  { background: #884444; }
 
   .kpi-label {
     font-size: 9px;
@@ -155,6 +157,8 @@
   .kpi-card.execucao .kpi-value  { color: #6AADEA; }
   .kpi-card.revisando .kpi-value { color: #D4892A; }
   .kpi-card.finalizado .kpi-value{ color: #3A9C4A; }
+  .kpi-card.paralisado .kpi-value { color: #DD8844; }
+  .kpi-card.cancelado .kpi-value  { color: #BB7777; }
   .kpi-sub { font-size: 10px; color: #5A5850; margin-top: 5px; }
 
   /* ─── BOTTOM KPIS ─── */
@@ -217,17 +221,18 @@
   .pie-canvas-container {
     position: relative;
     width: 100%;
-    height: 160px;
-    transform: perspective(500px) rotateX(22deg) scaleY(0.9);
+    height: 165px;
+    transform: perspective(380px) rotateX(32deg) scaleY(0.82);
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.55));
     transform-origin: center bottom;
   }
   .pie-shadow {
-    width: 80%;
-    height: 12px;
-    background: rgba(0,0,0,0.50);
+    width: 82%;
+    height: 18px;
+    background: rgba(0,0,0,0.65);
     border-radius: 50%;
-    margin: 0 auto;
-    filter: blur(6px);
+    margin: -4px auto 0;
+    filter: blur(9px);
   }
   .pie-legend {
     display: grid;
@@ -288,7 +293,7 @@
   }
   .table-header, .table-row {
     display: grid;
-    grid-template-columns: 90px 1fr 55px 130px;
+    grid-template-columns: 90px 1fr 55px 120px 80px;
     gap: 8px;
     padding: 7px 0;
     align-items: center;
@@ -309,6 +314,24 @@
   }
   .table-row:last-child { border-bottom: none; }
   .mono { font-family: 'Courier New', monospace; font-size: 10px; color: #6A6860; }
+
+  /* STATUS BADGE */
+  .status-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-family: 'Courier New', monospace;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .status-badge.aguardando { background: rgba(138,133,117,0.20); color: #B0AA99; }
+  .status-badge.execucao   { background: rgba(55,138,221,0.20);  color: #6AADEA; }
+  .status-badge.revisando  { background: rgba(212,137,42,0.20);  color: #D4892A; }
+  .status-badge.paralisado { background: rgba(204,102,34,0.20);  color: #DD8844; }
+  .status-badge.cancelado  { background: rgba(136,68,68,0.20);   color: #CC7777; }
+  .status-badge.finalizado { background: rgba(58,125,68,0.20);   color: #3A9C4A; }
 
   /* ─── LOADING ─── */
   #loading-bar {
@@ -379,6 +402,16 @@
   <div class="kpi-card revisando">
     <div class="kpi-label">Revisando</div>
     <div class="kpi-value" id="kpi-revisando">—</div>
+    <div class="kpi-sub">processos</div>
+  </div>
+  <div class="kpi-card paralisado">
+    <div class="kpi-label">Paralisado</div>
+    <div class="kpi-value" id="kpi-paralisado">—</div>
+    <div class="kpi-sub">processos</div>
+  </div>
+  <div class="kpi-card cancelado">
+    <div class="kpi-label">Cancelado</div>
+    <div class="kpi-value" id="kpi-cancelado">—</div>
     <div class="kpi-sub">processos</div>
   </div>
   <div class="kpi-card finalizado">
@@ -462,9 +495,24 @@
     <span class="etp-badge" id="etp-badge"></span>
   </div>
   <div class="table-header">
-    <span>Processo</span><span>Objeto</span><span>Setor</span><span>Valor Estimado</span>
+    <span>Processo</span><span>Objeto</span><span>Setor</span><span>Valor Estimado</span><span>Status</span>
   </div>
   <div id="etp-table"></div>
+</div>
+
+<!-- ETP Media -->
+<div class="card" style="margin-top:10px;">
+  <div class="etp-header">
+    <div>
+      <div class="card-title">ETP pendente — prioridade média</div>
+      <div class="card-sub" style="margin-bottom:0;">Processos em atenção aguardando conclusão do Estudo Técnico Preliminar</div>
+    </div>
+    <span class="etp-badge" id="etp-badge-media" style="color:#D4892A;background:rgba(180,110,20,0.22);border-color:rgba(200,140,50,0.30);"></span>
+  </div>
+  <div class="table-header">
+    <span>Processo</span><span>Objeto</span><span>Setor</span><span>Valor Estimado</span><span>Status</span>
+  </div>
+  <div id="etp-table-media"></div>
 </div>
 
 <footer id="footer-ts">COMARA · PROJETO SIGMA · Dashboard gerado em abr/2026</footer>
@@ -589,22 +637,26 @@ function parseCSV(text) {
 
 function renderDashboard(dados) {
   const total = dados.length;
-  const counts = {Aguardando:0, Execução:0, Revisando:0, Finalizado:0};
+  const counts = {Aguardando:0, Execução:0, Revisando:0, Paralisado:0, Cancelado:0, Finalizado:0};
   dados.forEach(p => {
     const s = p.status || '';
     if (s === 'Aguardando') counts.Aguardando++;
     else if (s === 'Execução') counts.Execução++;
     else if (s === 'Revisando') counts.Revisando++;
+    else if (s === 'Paralisado') counts.Paralisado++;
+    else if (s === 'Cancelado') counts.Cancelado++;
     else if (s === 'Finalizado') counts.Finalizado++;
   });
   document.getElementById('kpi-aguardando').textContent = counts.Aguardando;
   document.getElementById('kpi-execucao').textContent   = counts.Execução;
   document.getElementById('kpi-revisando').textContent  = counts.Revisando;
+  document.getElementById('kpi-paralisado').textContent = counts.Paralisado;
+  document.getElementById('kpi-cancelado').textContent  = counts.Cancelado;
   document.getElementById('kpi-finalizado').textContent = counts.Finalizado;
   document.getElementById('kpi-total').textContent = total;
 
-  const etpPend = dados.filter(p => !p.etp).length;
-  const altaPend = dados.filter(p => !p.etp && p.pri === 'Alta').length;
+  const etpPend = dados.filter(p => !p.etp && p.status !== 'Cancelado').length;
+  const altaPend = dados.filter(p => !p.etp && p.pri === 'Alta' && p.status !== 'Cancelado').length;
   document.getElementById('kpi-etp').textContent   = etpPend;
   document.getElementById('kpi-alta').textContent  = altaPend;
 
@@ -647,7 +699,7 @@ function renderDashboard(dados) {
   // Gráfico pizza 3D
   const setores = [...new Set(dados.map(p=>p.setor))].sort();
   const setorCounts = setores.map(s => dados.filter(p=>p.setor===s).length);
-  const pieColors = ['#C8A84B','#378ADD','#3A7D44','#7F77DD','#CC4444','#D4892A'];
+  const pieColors = ['#F0C040','#4AA8EE','#52BB60','#9988F5','#EE5555','#F09930'];
   if (pieChart) pieChart.destroy();
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'pie',
@@ -719,15 +771,19 @@ function renderDashboard(dados) {
         </div>`).join('');
 
   // Tabela ETP Alta
-  const etpAlta = dados.filter(p=>!p.etp&&p.pri==='Alta');
+  const etpAlta = dados.filter(p=>!p.etp&&p.pri==='Alta'&&p.status!=='Cancelado');
   document.getElementById('etp-badge').textContent = etpAlta.length + ' pendentes';
-  document.getElementById('etp-table').innerHTML = etpAlta.map(p=>`
-    <div class="table-row">
-      <span class="mono">${p.id}</span>
-      <span>${p.objeto}</span>
-      <span class="mono">${p.setor}</span>
-      <span style="font-size:10px;color:#6A6860;">${p.valor}</span>
-    </div>`).join('');
+  document.getElementById('etp-table').innerHTML = etpAlta.map(function(p){
+    var cls=(p.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
+    return '<div class="table-row"><span class="mono">'+p.id+'</span><span>'+p.objeto+'</span><span class="mono">'+p.setor+'</span><span style="font-size:10px;color:#6A6860;">'+p.valor+'</span><span><span class="status-badge '+cls+'">'+(p.status||'—')+'</span></span></div>';
+  }).join('');
+
+  var etpMedia = dados.filter(function(p){return !p.etp&&p.pri==='Média'&&p.status!=='Cancelado';});
+  document.getElementById('etp-badge-media').textContent = etpMedia.length + ' pendentes';
+  document.getElementById('etp-table-media').innerHTML = etpMedia.map(function(p){
+    var cls=(p.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
+    return '<div class="table-row"><span class="mono">'+p.id+'</span><span>'+p.objeto+'</span><span class="mono">'+p.setor+'</span><span style="font-size:10px;color:#6A6860;">'+p.valor+'</span><span><span class="status-badge '+cls+'">'+(p.status||'—')+'</span></span></div>';
+  }).join('');
 }
 
 // ─── CARREGAMENTO VIA GOOGLE VISUALIZATION API (SEM CORS) ──────
