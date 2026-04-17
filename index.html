@@ -699,7 +699,7 @@ function renderDashboard(dados) {
   // Gráfico pizza 3D
   const setores = [...new Set(dados.map(p=>p.setor))].sort();
   const setorCounts = setores.map(s => dados.filter(p=>p.setor===s).length);
-  const pieColors = ['#F0C040','#4AA8EE','#52BB60','#9988F5','#EE5555','#F09930'];
+  const pieColors = ['#F0C040','#4AA8EE','#52BB60','#9988F5','#EE5555','#F09930','#9A9585'];
   if (pieChart) pieChart.destroy();
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'pie',
