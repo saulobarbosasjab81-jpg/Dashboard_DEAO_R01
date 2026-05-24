@@ -112,7 +112,7 @@
   /* ─── KPI GRID ─── */
   .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 9px;
     margin-bottom: 14px;
   }
@@ -135,6 +135,8 @@
   .kpi-card.aguardando::before { background: #8A8575; }
   .kpi-card.execucao::before  { background: #378ADD; }
   .kpi-card.revisando::before { background: #D4892A; }
+  .kpi-card.paralisado::before{ background: #7F77DD; }
+  .kpi-card.cancelado::before { background: #CC4444; }
   .kpi-card.finalizado::before{ background: #3A7D44; }
 
   .kpi-label {
@@ -154,6 +156,8 @@
   .kpi-card.aguardando .kpi-value { color: #B0AA99; }
   .kpi-card.execucao .kpi-value  { color: #6AADEA; }
   .kpi-card.revisando .kpi-value { color: #D4892A; }
+  .kpi-card.paralisado .kpi-value{ color: #A89EFF; }
+  .kpi-card.cancelado .kpi-value { color: #EE7070; }
   .kpi-card.finalizado .kpi-value{ color: #3A9C4A; }
   .kpi-sub { font-size: 10px; color: #5A5850; margin-top: 5px; }
 
@@ -288,7 +292,7 @@
   }
   .table-header, .table-row {
     display: grid;
-    grid-template-columns: 90px 1fr 55px 130px;
+    grid-template-columns: 90px 1fr 55px 130px 90px;
     gap: 8px;
     padding: 7px 0;
     align-items: center;
@@ -381,6 +385,16 @@
     <div class="kpi-value" id="kpi-revisando">—</div>
     <div class="kpi-sub">processos</div>
   </div>
+  <div class="kpi-card paralisado">
+    <div class="kpi-label">Paralisado</div>
+    <div class="kpi-value" id="kpi-paralisado">—</div>
+    <div class="kpi-sub">processos</div>
+  </div>
+  <div class="kpi-card cancelado">
+    <div class="kpi-label">Cancelado</div>
+    <div class="kpi-value" id="kpi-cancelado">—</div>
+    <div class="kpi-sub">processos</div>
+  </div>
   <div class="kpi-card finalizado">
     <div class="kpi-label">Finalizado</div>
     <div class="kpi-value" id="kpi-finalizado">—</div>
@@ -462,9 +476,24 @@
     <span class="etp-badge" id="etp-badge"></span>
   </div>
   <div class="table-header">
-    <span>Processo</span><span>Objeto</span><span>Setor</span><span>Valor Estimado</span>
+    <span>Processo</span><span>Objeto</span><span>Setor</span><span>Valor Estimado</span><span>Status</span>
   </div>
   <div id="etp-table"></div>
+</div>
+
+<!-- Tabela ETP Média Prioridade -->
+<div class="card">
+  <div class="etp-header">
+    <div>
+      <div class="card-title">ETP pendente — prioridade média</div>
+      <div class="card-sub" style="margin-bottom:0;">Processos de prioridade média aguardando conclusão do Estudo Técnico Preliminar</div>
+    </div>
+    <span class="etp-badge" id="etp-badge-media"></span>
+  </div>
+  <div class="table-header">
+    <span>Processo</span><span>Objeto</span><span>Setor</span><span>Valor Estimado</span><span>Status</span>
+  </div>
+  <div id="etp-table-media"></div>
 </div>
 
 <footer id="footer-ts">COMARA · PROJETO SIGMA · Dashboard gerado em abr/2026</footer>
@@ -589,22 +618,26 @@ function parseCSV(text) {
 
 function renderDashboard(dados) {
   const total = dados.length;
-  const counts = {Aguardando:0, Execução:0, Revisando:0, Finalizado:0};
+  const counts = {Aguardando:0, Execução:0, Revisando:0, Paralisado:0, Cancelado:0, Finalizado:0};
   dados.forEach(p => {
     const s = p.status || '';
     if (s === 'Aguardando') counts.Aguardando++;
     else if (s === 'Execução') counts.Execução++;
     else if (s === 'Revisando') counts.Revisando++;
+    else if (s === 'Paralisado') counts.Paralisado++;
+    else if (s === 'Cancelado') counts.Cancelado++;
     else if (s === 'Finalizado') counts.Finalizado++;
   });
-  document.getElementById('kpi-aguardando').textContent = counts.Aguardando;
-  document.getElementById('kpi-execucao').textContent   = counts.Execução;
-  document.getElementById('kpi-revisando').textContent  = counts.Revisando;
-  document.getElementById('kpi-finalizado').textContent = counts.Finalizado;
+  document.getElementById('kpi-aguardando').textContent  = counts.Aguardando;
+  document.getElementById('kpi-execucao').textContent    = counts.Execução;
+  document.getElementById('kpi-revisando').textContent   = counts.Revisando;
+  document.getElementById('kpi-paralisado').textContent  = counts.Paralisado;
+  document.getElementById('kpi-cancelado').textContent   = counts.Cancelado;
+  document.getElementById('kpi-finalizado').textContent  = counts.Finalizado;
   document.getElementById('kpi-total').textContent = total;
 
-  const etpPend = dados.filter(p => !p.etp).length;
-  const altaPend = dados.filter(p => !p.etp && p.pri === 'Alta').length;
+  const etpPend  = dados.filter(p => !p.etp && p.status !== 'Cancelado').length;
+  const altaPend = dados.filter(p => !p.etp && p.pri === 'Alta' && p.status !== 'Cancelado').length;
   document.getElementById('kpi-etp').textContent   = etpPend;
   document.getElementById('kpi-alta').textContent  = altaPend;
 
@@ -647,7 +680,8 @@ function renderDashboard(dados) {
   // Gráfico pizza 3D
   const setores = [...new Set(dados.map(p=>p.setor))].sort();
   const setorCounts = setores.map(s => dados.filter(p=>p.setor===s).length);
-  const pieColors = ['#C8A84B','#378ADD','#3A7D44','#7F77DD','#CC4444','#D4892A'];
+  const pieColors = ['#FFD166','#4A9EFF','#56C768','#A89EFF','#FF6B6B','#FF9F43','#78C2C4','#F7B2BD'];
+  const sliceColors = setores.map((_, i) => pieColors[i % pieColors.length]);
   if (pieChart) pieChart.destroy();
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'pie',
@@ -655,9 +689,10 @@ function renderDashboard(dados) {
       labels: setores,
       datasets: [{
         data: setorCounts,
-        backgroundColor: pieColors.slice(0, setores.length),
-        borderWidth: 1.5,
-        borderColor: 'rgba(10,12,10,0.80)'
+        backgroundColor: sliceColors,
+        borderWidth: 2,
+        borderColor: 'rgba(10,12,10,0.85)',
+        hoverOffset: 10
       }]
     },
     options: {
@@ -666,20 +701,20 @@ function renderDashboard(dados) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: c => c.label + ': ' + c.parsed + ' (' + Math.round(c.parsed/total*100) + '%)'
+            label: c => ' ' + c.label + ': ' + c.parsed + ' (' + Math.round(c.parsed/total*100) + '%)'
           },
-          backgroundColor: 'rgba(10,12,10,0.90)',
-          titleColor: '#C8A84B', bodyColor: '#E8E4D8', borderColor: 'rgba(200,168,75,0.3)', borderWidth: 1
+          backgroundColor: 'rgba(10,12,10,0.92)',
+          titleColor: '#FFD166', bodyColor: '#E8E4D8', borderColor: 'rgba(255,209,102,0.35)', borderWidth: 1
         }
       }
     }
   });
 
-  // Legenda da pizza
+  // Legenda da pizza — mesma ordem e cores do gráfico
   const legEl = document.getElementById('pie-legend');
   legEl.innerHTML = setores.map((s,i)=>`
     <span class="pie-legend-item">
-      <span class="pie-legend-dot" style="background:${pieColors[i]};"></span>
+      <span class="pie-legend-dot" style="background:${sliceColors[i]};box-shadow:0 0 4px ${sliceColors[i]}88;"></span>
       <span>${s} (${setorCounts[i]})</span>
     </span>`).join('');
 
@@ -718,16 +753,41 @@ function renderDashboard(dados) {
           </div>
         </div>`).join('');
 
+  function statusBadge(s) {
+    const map = {
+      'Aguardando':'#8A8575','Execução':'#4A9EFF','Revisando':'#FF9F43',
+      'Paralisado':'#A89EFF','Cancelado':'#FF6B6B','Finalizado':'#56C768'
+    };
+    return `<span style="font-size:10px;color:${map[s]||'#6A6860'};">${s||'—'}</span>`;
+  }
+
   // Tabela ETP Alta
-  const etpAlta = dados.filter(p=>!p.etp&&p.pri==='Alta');
+  const etpAlta = dados.filter(p=>!p.etp&&p.pri==='Alta'&&p.status!=='Cancelado');
   document.getElementById('etp-badge').textContent = etpAlta.length + ' pendentes';
-  document.getElementById('etp-table').innerHTML = etpAlta.map(p=>`
+  document.getElementById('etp-table').innerHTML = etpAlta.length
+    ? etpAlta.map(p=>`
     <div class="table-row">
       <span class="mono">${p.id}</span>
       <span>${p.objeto}</span>
       <span class="mono">${p.setor}</span>
       <span style="font-size:10px;color:#6A6860;">${p.valor}</span>
-    </div>`).join('');
+      ${statusBadge(p.status)}
+    </div>`).join('')
+    : '<div style="padding:12px 0;font-size:11px;color:#56C768;">Nenhum processo pendente de prioridade alta.</div>';
+
+  // Tabela ETP Média
+  const etpMedia = dados.filter(p=>!p.etp&&p.pri==='Média'&&p.status!=='Cancelado');
+  document.getElementById('etp-badge-media').textContent = etpMedia.length + ' pendentes';
+  document.getElementById('etp-table-media').innerHTML = etpMedia.length
+    ? etpMedia.map(p=>`
+    <div class="table-row">
+      <span class="mono">${p.id}</span>
+      <span>${p.objeto}</span>
+      <span class="mono">${p.setor}</span>
+      <span style="font-size:10px;color:#6A6860;">${p.valor}</span>
+      ${statusBadge(p.status)}
+    </div>`).join('')
+    : '<div style="padding:12px 0;font-size:11px;color:#56C768;">Nenhum processo pendente de prioridade média.</div>';
 }
 
 // ─── CARREGAMENTO VIA GOOGLE VISUALIZATION API (SEM CORS) ──────
